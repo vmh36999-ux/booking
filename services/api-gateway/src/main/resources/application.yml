@@ -1,0 +1,73 @@
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: api-gateway
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${AUTH_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: auth
+              uri: ${AUTH_URL:http://localhost:8081}
+              predicates:
+                - Path=/api/v1/auth/**
+            - id: users
+              uri: ${USER_URL:http://localhost:8082}
+              predicates:
+                - Path=/api/v1/users/**
+            - id: bookings
+              uri: ${BOOKING_URL:http://localhost:8083}
+              predicates:
+                - Path=/api/v1/bookings/**,/api/v1/host/bookings/**
+            - id: properties
+              uri: ${PROPERTY_URL:http://localhost:8084}
+              predicates:
+                - Path=/api/v1/properties/**,/api/v1/host/properties/**
+            - id: search
+              uri: ${SEARCH_URL:http://localhost:8085}
+              predicates:
+                - Path=/api/v1/search/**
+            - id: inventory
+              uri: ${INVENTORY_URL:http://localhost:8086}
+              predicates:
+                - Path=/api/v1/inventory/**,/api/v1/host/inventory/**
+            - id: pricing
+              uri: ${PRICING_URL:http://localhost:8087}
+              predicates:
+                - Path=/api/v1/pricing/**
+            - id: payments
+              uri: ${PAYMENT_URL:http://localhost:8088}
+              predicates:
+                - Path=/api/v1/payments/**,/api/v1/webhooks/**
+            - id: reviews
+              uri: ${REVIEW_URL:http://localhost:8089}
+              predicates:
+                - Path=/api/v1/reviews/**
+            - id: media
+              uri: ${MEDIA_URL:http://localhost:8091}
+              predicates:
+                - Path=/api/v1/media/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true      # /actuator/health/liveness và /readiness cho Kubernetes
+
+app:
+  security:
+    permit-all: false

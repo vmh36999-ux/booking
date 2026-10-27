@@ -1,0 +1,8 @@
+# Profile "local": chạy thử không cần auth-service
+app:
+  security:
+    permit-all: true
+
+logging:
+  level:
+    com.bookingplatform: DEBUG

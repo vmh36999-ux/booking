@@ -1,0 +1,107 @@
+name: booking-platform
+
+# Chạy toàn bộ service trong Docker (cần hạ tầng):
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.apps.yml up -d --build
+# 12 JVM chạy cùng lúc: cần khoảng 8 GB RAM cho Docker.
+
+x-app: &app
+  mem_limit: 512m
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    kafka:
+      condition: service_started
+  environment:
+    SPRING_PROFILES_ACTIVE: local        # bỏ dòng này khi muốn bắt buộc JWT
+    DB_HOST: postgres
+    REDIS_HOST: redis
+    KAFKA_BOOTSTRAP: kafka:29092
+    ES_URI: http://elasticsearch:9200
+    S3_ENDPOINT: http://minio:9000
+    MAIL_HOST: mailpit
+    AUTH_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
+    AUTH_URL: http://auth-service:8081
+    USER_URL: http://user-service:8082
+    BOOKING_URL: http://booking-service:8083
+    PROPERTY_URL: http://property-service:8084
+    SEARCH_URL: http://search-service:8085
+    INVENTORY_URL: http://inventory-service:8086
+    PRICING_URL: http://pricing-service:8087
+    PAYMENT_URL: http://payment-service:8088
+    REVIEW_URL: http://review-service:8089
+    MEDIA_URL: http://media-service:8091
+
+services:
+  api-gateway:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/api-gateway/Dockerfile
+    ports: ["8080:8080"]
+  auth-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/auth-service/Dockerfile
+    ports: ["8081:8081"]
+  user-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/user-service/Dockerfile
+    ports: ["8082:8082"]
+  booking-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/booking-service/Dockerfile
+    ports: ["8083:8083"]
+  property-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/property-service/Dockerfile
+    ports: ["8084:8084"]
+  search-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/search-service/Dockerfile
+    ports: ["8085:8085"]
+  inventory-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/inventory-service/Dockerfile
+    ports: ["8086:8086"]
+  pricing-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/pricing-service/Dockerfile
+    ports: ["8087:8087"]
+  payment-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/payment-service/Dockerfile
+    ports: ["8088:8088"]
+  review-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/review-service/Dockerfile
+    ports: ["8089:8089"]
+  notification-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/notification-service/Dockerfile
+    ports: ["8090:8090"]
+  media-service:
+    <<: *app
+    build:
+      context: ..
+      dockerfile: services/media-service/Dockerfile
+    ports: ["8091:8091"]
