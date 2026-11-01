@@ -1,3 +1,4 @@
+
 server:
   port: ${PORT:8081}
   shutdown: graceful
@@ -5,24 +6,30 @@ server:
 spring:
   application:
     name: auth-service
+
   lifecycle:
     timeout-per-shutdown-phase: 20s
+
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/auth_db
-    username: ${DB_USER:platform}
-    password: ${DB_PASSWORD:platform}
+    url: jdbc:postgresql://127.0.0.1:5432/auth_db
+    username: platform
+    password: platform
     hikari:
       maximum-pool-size: 10
+
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate   # schema do Flyway quản lý, Hibernate chỉ kiểm tra
+      ddl-auto: validate
+
   flyway:
     enabled: true
+
   data:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
     producer:
@@ -37,6 +44,7 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     listener:
       ack-mode: record
+
   security:
     oauth2:
       resourceserver:
@@ -51,8 +59,12 @@ management:
   endpoint:
     health:
       probes:
-        enabled: true      # /actuator/health/liveness và /readiness cho Kubernetes
+        enabled: true
 
 app:
   security:
     permit-all: false
+  auth:
+    issuer: ${AUTH_ISSUER:http://localhost:8081}
+    access-token-ttl: 15m
+    rsa-private-key: ${AUTH_RSA_PRIVATE_KEY:}
