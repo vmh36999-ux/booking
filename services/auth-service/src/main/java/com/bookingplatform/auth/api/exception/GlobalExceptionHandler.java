@@ -1,104 +1,120 @@
+
 package com.bookingplatform.auth.api.exception;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.bookingplatform.auth.domain.exception.EmailAlreadyUsedException;
 import com.bookingplatform.auth.domain.exception.InvalidCredentialsException;
 import com.bookingplatform.auth.domain.exception.InvalidRegistrationException;
-
-import java.net.URI;
-import java.util.List;
-import java.util.Map;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ProblemDetail;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
-import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import com.bookingplatform.auth.domain.exception.InvalidRefreshTokenException;
+import com.bookingplatform.auth.domain.exception.TooManyAttemptsException;
+import com.bookingplatform.common.web.ProblemFactory;
 
 /**
- * Handles all API errors using RFC 9457 (application/problem+json),
- * including a stable "code" field for clients.
- *
- * Extends ResponseEntityExceptionHandler to ensure standard
- * Spring MVC exceptions are also returned as ProblemDetail.
+ * Handles authentication-related API exceptions.
+ * Returns standardized RFC 9457 ProblemDetail responses.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+public class GlobalExceptionHandler {
 
-    @ExceptionHandler(EmailAlreadyUsedException.class)
-    public ProblemDetail emailAlreadyUsed(EmailAlreadyUsedException ex) {
-        return problem(
-                HttpStatus.CONFLICT,
-                "EMAIL_ALREADY_USED",
-                "Email Already Used",
-                ex.getMessage());
-    }
+        /**
+         * Handles duplicate email registration.
+         * HTTP 409 - Conflict.
+         */
+        @ExceptionHandler(EmailAlreadyUsedException.class)
+        public ProblemDetail emailAlreadyUsed(EmailAlreadyUsedException ex) {
+                return ProblemFactory.of(
+                                HttpStatus.CONFLICT,
+                                "EMAIL_ALREADY_USED",
+                                "Email Already Used",
+                                "This email address is already registered.");
+        }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ProblemDetail invalidCredentials(InvalidCredentialsException ex) {
-        return problem(
-                HttpStatus.UNAUTHORIZED,
-                "INVALID_CREDENTIALS",
-                "Authentication Failed",
-                ex.getMessage());
-    }
+        /**
+         * Handles invalid login credentials.
+         * HTTP 401 - Unauthorized.
+         */
+        @ExceptionHandler(InvalidCredentialsException.class)
+        public ProblemDetail invalidCredentials(InvalidCredentialsException ex) {
+                return ProblemFactory.of(
+                                HttpStatus.UNAUTHORIZED,
+                                "INVALID_CREDENTIALS",
+                                "Authentication Failed",
+                                "Email or password is not correct.");
+        }
 
-    @ExceptionHandler(InvalidRegistrationException.class)
-    public ProblemDetail invalidRegistration(InvalidRegistrationException ex) {
-        return problem(
-                HttpStatus.BAD_REQUEST,
-                "VALIDATION_ERROR",
-                "Invalid Registration Data",
-                ex.getMessage());
-    }
+        /**
+         * Handles invalid registration data.
+         * HTTP 400 - Bad Request.
+         */
+        @ExceptionHandler(InvalidRegistrationException.class)
+        public ProblemDetail invalidRegistration(InvalidRegistrationException ex) {
+                return ProblemFactory.of(
+                                HttpStatus.BAD_REQUEST,
+                                "VALIDATION_ERROR",
+                                "Invalid Registration Data",
+                                "The registration information is invalid.");
+        }
 
-    @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException ex,
-            HttpHeaders headers,
-            HttpStatusCode status,
-            WebRequest request) {
+        /**
+         * Handles invalid, expired, or reused refresh tokens.
+         * HTTP 401 - Unauthorized.
+         */
+        @ExceptionHandler(InvalidRefreshTokenException.class)
+        public ProblemDetail invalidRefreshToken(InvalidRefreshTokenException ex) {
+                return ProblemFactory.of(
+                                HttpStatus.UNAUTHORIZED,
+                                "INVALID_REFRESH_TOKEN",
+                                "Invalid Refresh Token",
+                                "The refresh token is invalid, expired, or has already been used.");
+        }
 
-        ProblemDetail pd = problem(
-                HttpStatus.BAD_REQUEST,
-                "VALIDATION_ERROR",
-                "Validation Failed",
-                "One or more fields are invalid");
+        /**
+         * Handles requests that exceed the allowed attempt limit.
+         * HTTP 429 - Too Many Requests.
+         */
+        @ExceptionHandler(TooManyAttemptsException.class)
+        public ProblemDetail tooManyAttempts(TooManyAttemptsException ex) {
+                return ProblemFactory.of(
+                                HttpStatus.TOO_MANY_REQUESTS,
+                                "TOO_MANY_ATTEMPTS",
+                                "Too Many Requests",
+                                "Too many attempts. Please try again later.");
+        }
 
-        List<Map<String, String>> errors = ex.getBindingResult()
-                .getFieldErrors()
-                .stream()
-                .map(fe -> Map.of(
-                        "field", fe.getField(),
-                        "message", fe.getDefaultMessage() == null
-                                ? "Invalid value"
-                                : fe.getDefaultMessage()))
-                .toList();
+        /**
+         * Handles request body validation errors.
+         * HTTP 400 - Bad Request.
+         */
+        @ExceptionHandler(MethodArgumentNotValidException.class)
+        public ProblemDetail handleValidationErrors(
+                        MethodArgumentNotValidException ex) {
 
-        pd.setProperty("errors", errors);
+                ProblemDetail problem = ProblemFactory.of(
+                                HttpStatus.BAD_REQUEST,
+                                "VALIDATION_ERROR",
+                                "Validation Failed",
+                                "One or more fields are invalid.");
 
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .headers(headers)
-                .body(pd);
-    }
+                List<Map<String, String>> errors = ex.getBindingResult()
+                                .getFieldErrors()
+                                .stream()
+                                .map(error -> Map.of(
+                                                "field", error.getField(),
+                                                "message", error.getDefaultMessage() == null
+                                                                ? "Invalid value"
+                                                                : error.getDefaultMessage()))
+                                .toList();
 
-    private static ProblemDetail problem(
-            HttpStatus status,
-            String code,
-            String title,
-            String detail) {
+                problem.setProperty("errors", errors);
 
-        ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
-        pd.setTitle(title);
-        pd.setType(URI.create(
-                "urn:problem:" + code.toLowerCase().replace('_', '-')));
-        pd.setProperty("code", code);
-
-        return pd;
-    }
+                return problem;
+        }
 }

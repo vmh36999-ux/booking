@@ -6,6 +6,8 @@ import com.bookingplatform.auth.domain.port.CredentialRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceException;
 import java.util.Optional;
+import java.util.UUID;
+
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.stereotype.Repository;
 
@@ -37,6 +39,11 @@ public class CredentialRepositoryAdapter implements CredentialRepository {
             }
             throw e;
         }
+    }
+
+    @Override
+    public Optional<Credential> findById(UUID userId) {
+        return jpa.findById(userId);
     }
 
     @Override
