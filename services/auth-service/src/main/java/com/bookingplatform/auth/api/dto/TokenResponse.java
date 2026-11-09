@@ -1,10 +1,16 @@
 package com.bookingplatform.auth.api.dto;
 
-import com.bookingplatform.auth.domain.model.IssuedToken;
+import com.bookingplatform.auth.domain.model.Session;
 
-public record TokenResponse(String accessToken, String tokenType, long expiresIn) {
+public record TokenResponse(String accessToken, String tokenType, long expiresIn, String refreshToken,
+        long refreshExpiresIn) {
 
-    public static TokenResponse from(IssuedToken token) {
-        return new TokenResponse(token.value(), "Bearer", token.expiresInSeconds());
+    public static TokenResponse from(Session session) {
+        return new TokenResponse(
+                session.accessToken().value(),
+                "Bearer",
+                session.accessToken().expiresInSeconds(),
+                session.refreshToken(),
+                session.refreshExpiresInSeconds());
     }
 }

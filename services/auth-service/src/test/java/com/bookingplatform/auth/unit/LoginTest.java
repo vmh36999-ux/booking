@@ -2,16 +2,23 @@ package com.bookingplatform.auth.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.bookingplatform.auth.application.usecase.IssueSession;
 import com.bookingplatform.auth.application.usecase.Login;
 import com.bookingplatform.auth.domain.exception.InvalidCredentialsException;
+import com.bookingplatform.auth.domain.exception.TooManyAttemptsException;
 import com.bookingplatform.auth.domain.model.Credential;
 import com.bookingplatform.auth.domain.model.IssuedToken;
 import com.bookingplatform.auth.domain.model.Role;
+import com.bookingplatform.auth.domain.model.Session;
 import com.bookingplatform.auth.domain.port.CredentialRepository;
-import com.bookingplatform.auth.domain.port.TokenIssuer;
+import com.bookingplatform.auth.domain.port.LoginAttemptLimiter;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -20,68 +27,75 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 class LoginTest {
 
-    // Mock repository để giả lập thao tác truy vấn user trong database.
-    private final CredentialRepository repository = mock(CredentialRepository.class);
+        private static final String IP = "203.0.113.7";
 
-    // Mock TokenIssuer để giả lập việc tạo JWT, không cần ký token thật trong unit
-    // test.
-    private final TokenIssuer tokenIssuer = mock(TokenIssuer.class);
+        private final CredentialRepository repository = mock(CredentialRepository.class);
+        private final IssueSession issueSession = mock(IssueSession.class);
+        private final LoginAttemptLimiter limiter = mock(LoginAttemptLimiter.class);
+        private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        private final Login login = new Login(repository, encoder, limiter, issueSession);
 
-    // Tạo PasswordEncoder giống cấu hình thực tế của ứng dụng.
-    private final PasswordEncoder encoder = PasswordEncoderFactories.createDelegatingPasswordEncoder();
+        private Credential existingUser() {
+                return Credential.register("user@example.com", encoder.encode("Passw0rd!2026"), Role.GUEST,
+                                Instant.now());
+        }
 
-    // Khởi tạo Login với các dependency đã được mock.
-    private final Login login = new Login(repository, encoder, tokenIssuer);
+        private Session session() {
+                return new Session(new IssuedToken("jwt", Instant.now().plusSeconds(900), 900), "refresh", 1_209_600);
+        }
 
-    // Tạo một user mẫu đã đăng ký, lưu password dưới dạng BCrypt hash.
-    private Credential existingUser() {
-        return Credential.register(
-                "user@example.com",
-                encoder.encode("Passw0rd!2026"),
-                Role.GUEST,
-                Instant.now());
-    }
+        @Test
+        void returnsSessionForCorrectPasswordAndResetsEmailCounter() {
+                Credential user = existingUser();
+                Session expected = session();
+                when(repository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+                when(issueSession.execute(user)).thenReturn(expected);
 
-    @Test
-    void returnsTokenForCorrectPassword() {
-        // Arrange: Chuẩn bị user và JWT giả lập.
-        Credential user = existingUser();
-        IssuedToken token = new IssuedToken("jwt", Instant.now().plusSeconds(900), 900);
+                Session result = login.execute("  USER@example.com", "Passw0rd!2026", IP);
 
-        // Khi tìm email này, repository trả về user đã chuẩn bị.
-        when(repository.findByEmail("user@example.com")).thenReturn(Optional.of(user));
+                assertThat(result).isSameAs(expected);
+                verify(limiter).recordSuccess("user@example.com");
+                verify(limiter, never()).recordFailure(any(), any());
+        }
 
-        // Khi TokenIssuer được gọi với user này, trả về JWT giả lập.
-        when(tokenIssuer.issue(user)).thenReturn(token);
+        @Test
+        void wrongPasswordIsRejectedAndCounted() {
+                when(repository.findByEmail("user@example.com")).thenReturn(Optional.of(existingUser()));
 
-        // Act: Đăng nhập bằng email viết hoa và có khoảng trắng ở đầu.
-        IssuedToken result = login.execute("  USER@example.com", "Passw0rd!2026");
+                assertThatThrownBy(() -> login.execute("user@example.com", "sai-mat-khau", IP))
+                                .isInstanceOf(InvalidCredentialsException.class);
+                verify(limiter).recordFailure("user@example.com", IP);
+                verify(issueSession, never()).execute(any());
+        }
 
-        // Assert: Kết quả trả về phải chính là token đã cấu hình.
-        assertThat(result).isSameAs(token);
-    }
+        @Test
+        void unknownEmailGetsSameErrorAndIsCounted() {
+                when(repository.findByEmail("nobody@example.com")).thenReturn(Optional.empty());
 
-    @Test
-    void rejectsWrongPassword() {
-        // Arrange: Email tồn tại trong database.
-        when(repository.findByEmail("user@example.com"))
-                .thenReturn(Optional.of(existingUser()));
+                assertThatThrownBy(() -> login.execute("nobody@example.com", "Passw0rd!2026", IP))
+                                .isInstanceOf(InvalidCredentialsException.class)
+                                .hasMessage("Email or password is not correct");
+                verify(limiter).recordFailure("nobody@example.com", IP);
+        }
 
-        // Act & Assert: Password sai thì phải ném InvalidCredentialsException.
-        assertThatThrownBy(() -> login.execute("user@example.com", "sai-mat-khau"))
-                .isInstanceOf(InvalidCredentialsException.class);
-    }
+        @Test
+        void disabledAccountIsRejectedEvenWithCorrectPassword() {
+                Credential disabled = mock(Credential.class);
+                when(disabled.getPasswordHash()).thenReturn(encoder.encode("Passw0rd!2026"));
+                when(disabled.isActive()).thenReturn(false);
+                when(repository.findByEmail("user@example.com")).thenReturn(Optional.of(disabled));
 
-    @Test
-    void rejectsUnknownEmailWithSameError() {
-        // Arrange: Email không tồn tại trong database.
-        when(repository.findByEmail("nobody@example.com"))
-                .thenReturn(Optional.empty());
+                assertThatThrownBy(() -> login.execute("user@example.com", "Passw0rd!2026", IP))
+                                .isInstanceOf(InvalidCredentialsException.class);
+                verify(issueSession, never()).execute(any());
+        }
 
-        // Act & Assert: Email không tồn tại cũng phải trả cùng loại lỗi
-        // và cùng message với trường hợp nhập sai password.
-        assertThatThrownBy(() -> login.execute("nobody@example.com", "Passw0rd!2026"))
-                .isInstanceOf(InvalidCredentialsException.class)
-                .hasMessage("Email or password is not correct");
-    }
+        @Test
+        void blockedByLimiterStopsBeforeAnyLookup() {
+                doThrow(new TooManyAttemptsException(60)).when(limiter).assertAllowed("user@example.com", IP);
+
+                assertThatThrownBy(() -> login.execute("user@example.com", "Passw0rd!2026", IP))
+                                .isInstanceOf(TooManyAttemptsException.class);
+                verify(repository, never()).findByEmail(any());
+        }
 }
