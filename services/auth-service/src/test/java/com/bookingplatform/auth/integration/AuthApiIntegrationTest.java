@@ -1,4 +1,196 @@
-}
+package com.bookingplatform.auth.integration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+// Nếu import dưới đây lỗi (Testcontainers 1.x), đổi thành: org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer;
+
+/**
+ * Chạy cả ứng dụng thật với Postgres và Redis thật (Testcontainers), rồi gọi
+ * HTTP đúng như client.
+ * OutboxPublisher bị tắt ở đây (không có Kafka); việc gửi lên Kafka có bài test
+ * riêng: OutboxPublisherIntegrationTest.
+ * Cần Docker đang chạy.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = { "app.outbox.enabled=false",
+                "app.auth.login-limit.max-per-ip=1000" })
+@Testcontainers
+class AuthApiIntegrationTest {
+
+        @Container
+        static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
+
+        @Container
+        static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7"))
+                        .withExposedPorts(6379);
+
+        @DynamicPropertySource
+        static void containers(DynamicPropertyRegistry registry) {
+                registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+                registry.add("spring.datasource.username", POSTGRES::getUsername);
+                registry.add("spring.datasource.password", POSTGRES::getPassword);
+                registry.add("spring.data.redis.host", REDIS::getHost);
+                registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
+        }
+
+        @Value("${local.server.port}")
+        int port;
+
+        @Autowired
+        JdbcTemplate jdbc;
+
+        private final HttpClient http = HttpClient.newHttpClient();
+
+        private HttpResponse<String> post(String path, String json) throws Exception {
+                HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path))
+                                .header("Content-Type", "application/json")
+                                .POST(BodyPublishers.ofString(json))
+                                .build();
+                return http.send(request, BodyHandlers.ofString());
+        }
+
+        private HttpResponse<String> get(String path) throws Exception {
+                HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + path)).GET()
+                                .build();
+                return http.send(request, BodyHandlers.ofString());
+        }
+
+        private static String registerBody(String email, String password, String accountType) {
+                return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\",\"accountType\":\"" + accountType
+                                + "\"}";
+        }
+
+        private static String loginBody(String email, String password) {
+                return "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+        }
+
+        private static String refreshBody(String refreshToken) {
+                return "{\"refreshToken\":\"" + refreshToken + "\"}";
+        }
+
+        private static String extract(String json, String field) {
+                Matcher m = Pattern.compile("\"" + field + "\"\\s*:\\s*\"([^\"]+)\"").matcher(json);
+                assertThat(m.find()).as("phản hồi phải có trường " + field + ": " + json).isTrue();
+                return m.group(1);
+        }
+
+        private Jwt decodeViaJwks(String token) {
+                return NimbusJwtDecoder
+                                .withJwkSetUri("http://localhost:" + port + "/.well-known/jwks.json")
+                                .build()
+                                .decode(token);
+        }
+
+        private String registerAndLogin(String email) throws Exception {
+                post("/api/v1/auth/register", registerBody(email, "Passw0rd!2026", "GUEST"));
+                HttpResponse<String> loggedIn = post("/api/v1/auth/login", loginBody(email, "Passw0rd!2026"));
+                assertThat(loggedIn.statusCode()).isEqualTo(200);
+                return loggedIn.body();
+        }
+
+        // ----------------------------------------------------------------- tuần 2
+
+        @Test
+        void registerThenLoginIssuesTokenVerifiableThroughJwks() throws Exception {
+                HttpResponse<String> registered = post("/api/v1/auth/register",
+                                registerBody("Alice.Guest@Example.com", "Passw0rd!2026", "GUEST"));
+                assertThat(registered.statusCode()).isEqualTo(201);
+                assertThat(registered.body()).contains("alice.guest@example.com").contains("GUEST");
+                assertThat(registered.body()).doesNotContain("Passw0rd").doesNotContain("password");
+
+                HttpResponse<String> loggedIn = post("/api/v1/auth/login",
+                                loginBody("alice.guest@example.com", "Passw0rd!2026"));
+                assertThat(loggedIn.statusCode()).isEqualTo(200);
+
+                Jwt jwt = decodeViaJwks(extract(loggedIn.body(), "accessToken"));
+                assertThat(jwt.getClaimAsStringList("roles")).containsExactly("GUEST");
+                assertThat(jwt.getSubject()).isNotBlank();
+        }
+
+        @Test
+        void hostRegistrationGetsHostRole() throws Exception {
+                post("/api/v1/auth/register", registerBody("host@example.com", "Passw0rd!2026", "HOST"));
+                HttpResponse<String> loggedIn = post("/api/v1/auth/login",
+                                loginBody("host@example.com", "Passw0rd!2026"));
+                Jwt jwt = decodeViaJwks(extract(loggedIn.body(), "accessToken"));
+                assertThat(jwt.getClaimAsStringList("roles")).containsExactly("HOST");
+        }
+
+        @Test
+        void duplicateEmailIgnoringCaseReturns409() throws Exception {
+                post("/api/v1/auth/register", registerBody("dup@example.com", "Passw0rd!2026", "GUEST"));
+
+                HttpResponse<String> second = post("/api/v1/auth/register",
+                                registerBody("DUP@EXAMPLE.COM", "Passw0rd!2026", "GUEST"));
+
+                assertThat(second.statusCode()).isEqualTo(409);
+                assertThat(second.headers().firstValue("Content-Type").orElse(""))
+                                .startsWith("application/problem+json");
+                assertThat(second.body()).contains("EMAIL_ALREADY_USED");
+        }
+
+        @Test
+        void invalidInputReturns400WithFieldErrors() throws Exception {
+                HttpResponse<String> response = post("/api/v1/auth/register",
+                                registerBody("khong-phai-email", "123", "GUEST"));
+
+                assertThat(response.statusCode()).isEqualTo(400);
+                assertThat(response.body()).contains("VALIDATION_ERROR").contains("\"errors\"");
+        }
+
+        @Test
+        void adminCannotSelfRegister() throws Exception {
+                HttpResponse<String> response = post("/api/v1/auth/register",
+                                registerBody("evil@example.com", "Passw0rd!2026", "ADMIN"));
+                assertThat(response.statusCode()).isEqualTo(400);
+        }
+
+        @Test
+        void wrongPasswordAndUnknownEmailReturnSame401() throws Exception {
+                post("/api/v1/auth/register", registerBody("bob@example.com", "Passw0rd!2026", "GUEST"));
+
+                HttpResponse<String> wrongPassword = post("/api/v1/auth/login",
+                                loginBody("bob@example.com", "sai-mat-khau"));
+                HttpResponse<String> unknownEmail = post("/api/v1/auth/login",
+                                loginBody("ghost@example.com", "Passw0rd!2026"));
+
+                assertThat(wrongPassword.statusCode()).isEqualTo(401);
+                assertThat(unknownEmail.statusCode()).isEqualTo(401);
+                assertThat(wrongPassword.body()).contains("INVALID_CREDENTIALS");
+                assertThat(unknownEmail.body()).contains("INVALID_CREDENTIALS");
+        }
+
+        @Test
+        void jwksExposesOnlyPublicKey() throws Exception {
+                HttpResponse<String> response = get("/.well-known/jwks.json");
+
+                assertThat(response.statusCode()).isEqualTo(200);
+                assertThat(response.body()).contains("\"kty\":\"RSA\"").contains("\"kid\"");
+                assertThat(response.body()).doesNotContain("\"d\":").doesNotContain("\"p\":").doesNotContain("\"q\":");
+        }
 
         @Test
         void healthEndpointIsPublic() throws Exception {
@@ -126,3 +318,4 @@
                                         .isEqualTo(401);
                 }
         }
+}
