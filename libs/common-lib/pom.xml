@@ -13,7 +13,7 @@
 
   <artifactId>common-lib</artifactId>
   <name>common-lib</name>
-  <description>Tiện ích dùng chung thật sự cắt ngang: correlation-id, định dạng lỗi. Giữ thật mỏng.</description>
+  <description>Tiện ích dùng chung thật sự cắt ngang: correlation-id. Giữ thật mỏng.</description>
 
   <!-- scope provided: service nào dùng thì tự mang framework, thư viện không ép phiên bản -->
   <dependencies>
@@ -25,11 +25,6 @@
     <dependency>
       <groupId>org.springframework</groupId>
       <artifactId>spring-web</artifactId>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.springframework</groupId>
-      <artifactId>spring-webmvc</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>

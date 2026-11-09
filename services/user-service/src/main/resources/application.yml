@@ -9,8 +9,8 @@ spring:
     timeout-per-shutdown-phase: 20s
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/user_db
-    username: platform
-    password: platform
+    username: ${DB_USER:platform}
+    password: ${DB_PASSWORD:platform}
     hikari:
       maximum-pool-size: 10
   jpa:
