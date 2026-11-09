@@ -1,3 +1,4 @@
+
 package com.bookingplatform.auth.unit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -109,7 +110,12 @@ class RefreshSessionTest {
     void rejectsDisabledAccount() {
         when(tokens.findByTokenHash(hash)).thenReturn(Optional.of(activeToken()));
         when(tokens.revokeIfActive(hash)).thenReturn(1);
-        when(credentials.findById(userId)).thenReturn(Optional.of(user(false)));
+
+        // Tạo Credential và hoàn tất stub isActive() trước.
+        Credential disabledCredential = user(false);
+
+        // Sau đó mới stub findById(), tránh lồng hai Mockito stubbing.
+        when(credentials.findById(userId)).thenReturn(Optional.of(disabledCredential));
 
         assertThatThrownBy(() -> refreshSession.execute(raw)).isInstanceOf(InvalidRefreshTokenException.class);
         verify(issueSession, never()).execute(any());
