@@ -2,7 +2,6 @@ package com.bookingplatform.auth.domain.port;
 
 import com.bookingplatform.auth.domain.model.Credential;
 import java.util.Optional;
-import java.util.UUID;
 
 public interface CredentialRepository {
 
@@ -15,6 +14,4 @@ public interface CredentialRepository {
     Optional<Credential> findByEmail(String normalizedEmail);
 
     boolean existsByEmail(String normalizedEmail);
-
-    Optional<Credential> findById(UUID userId);
 }
