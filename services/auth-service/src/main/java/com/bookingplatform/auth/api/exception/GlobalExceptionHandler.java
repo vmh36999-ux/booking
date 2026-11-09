@@ -17,6 +17,8 @@ import com.bookingplatform.auth.domain.exception.InvalidRefreshTokenException;
 import com.bookingplatform.auth.domain.exception.TooManyAttemptsException;
 import com.bookingplatform.common.web.ProblemFactory;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 /**
  * Handles authentication-related API exceptions.
  * Returns standardized RFC 9457 ProblemDetail responses.
@@ -81,7 +83,14 @@ public class GlobalExceptionHandler {
          * HTTP 429 - Too Many Requests.
          */
         @ExceptionHandler(TooManyAttemptsException.class)
-        public ProblemDetail tooManyAttempts(TooManyAttemptsException ex) {
+        public ProblemDetail tooManyAttempts(
+                        TooManyAttemptsException ex,
+                        HttpServletResponse response) {
+
+                response.setHeader(
+                                "Retry-After",
+                                String.valueOf(ex.getRetryAfterSeconds()));
+
                 return ProblemFactory.of(
                                 HttpStatus.TOO_MANY_REQUESTS,
                                 "TOO_MANY_ATTEMPTS",
