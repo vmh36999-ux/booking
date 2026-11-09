@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MAVEN_OPTS: -Duser.timezone=Asia/Ho_Chi_Minh
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

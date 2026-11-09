@@ -58,7 +58,7 @@ class UserServiceIntegrationTest {
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.0");
+    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.1");
 
     static final RSAKey KEY = newKey();
 
