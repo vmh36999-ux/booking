@@ -32,7 +32,7 @@ spring:
             - id: properties
               uri: ${PROPERTY_URL:http://localhost:8084}
               predicates:
-                - Path=/api/v1/properties/**,/api/v1/host/properties/**
+                - Path=/api/v1/properties/**,/api/v1/host/properties/**,/api/v1/admin/properties/**
             - id: search
               uri: ${SEARCH_URL:http://localhost:8085}
               predicates:

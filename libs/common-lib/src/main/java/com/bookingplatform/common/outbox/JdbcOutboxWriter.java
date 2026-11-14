@@ -1,10 +1,8 @@
-package com.bookingplatform.auth.infrastructure.messaging;
+package com.bookingplatform.common.outbox;
 
 import com.bookingplatform.events.EventEnvelope;
-import com.bookingplatform.auth.domain.port.OutboxWriter;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -12,7 +10,6 @@ import tools.jackson.databind.ObjectMapper;
  * transaction JPA đang chạy,
  * nên dòng outbox được lưu hoặc hủy CÙNG với dữ liệu nghiệp vụ.
  */
-@Component
 public class JdbcOutboxWriter implements OutboxWriter {
 
     private static final String INSERT_SQL = "INSERT INTO outbox (id, aggregate_id, type, topic, payload) VALUES (?, ?, ?, ?, ?::jsonb)";

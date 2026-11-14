@@ -52,3 +52,9 @@ management:
 app:
   security:
     permit-all: false
+  outbox:
+    enabled: true            # bật outbox dùng chung (common-lib)
+    poll-interval-ms: 400
+    batch-size: 50
+    publisher:
+      enabled: true          # false = chỉ ghi outbox, không gửi lên Kafka

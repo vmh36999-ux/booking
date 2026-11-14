@@ -20,7 +20,8 @@ import com.bookingplatform.auth.domain.model.AccountType;
 import com.bookingplatform.auth.domain.model.Credential;
 import com.bookingplatform.auth.domain.model.Role;
 import com.bookingplatform.auth.domain.port.CredentialRepository;
-import com.bookingplatform.auth.domain.port.OutboxWriter;
+import com.bookingplatform.common.outbox.OutboxWriter;
+
 import java.time.Clock;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

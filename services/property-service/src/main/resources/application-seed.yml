@@ -1,0 +1,13 @@
+# Profile "seed": nạp dữ liệu mẫu rồi tự thoát.
+#   mvn -pl services/property-service spring-boot:run "-Dspring-boot.run.profiles=seed"
+server:
+  port: 0                    # cổng ngẫu nhiên: không đụng với property-service đang chạy ở 8084
+
+app:
+  outbox:
+    publisher:
+      enabled: false         # seed chỉ GHI outbox; sự kiện được gửi khi service chạy bình thường lần sau
+  seed:
+    count: 10000
+    emit-events: false       # true = ghi cả sự kiện PropertyPublished cho từng khách sạn (để search dựng index ở tuần 8)
+    exit-when-done: true
