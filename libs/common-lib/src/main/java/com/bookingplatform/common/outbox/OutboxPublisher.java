@@ -13,6 +13,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Định kỳ lấy các dòng outbox chưa gửi, gửi lên Kafka, rồi đánh dấu đã gửi.
@@ -40,8 +41,11 @@ public class OutboxPublisher {
     private final TransactionTemplate transaction;
     private final int batchSize;
 
-    public OutboxPublisher(JdbcTemplate jdbc, KafkaTemplate<String, String> kafka,
-            TransactionTemplate transaction, int batchSize) {
+    public OutboxPublisher(
+            JdbcTemplate jdbc,
+            KafkaTemplate<String, String> kafka,
+            TransactionTemplate transaction,
+            @Value("${app.outbox.batch-size:100}") int batchSize) {
         this.jdbc = jdbc;
         this.kafka = kafka;
         this.transaction = transaction;
