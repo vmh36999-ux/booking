@@ -1,0 +1,89 @@
+### Tuần 4: request mẫu (IntelliJ HTTP Client hoặc VS Code REST Client)
+### Mọi request đi qua GATEWAY (cổng 8080). Dùng chữ không dấu trong JSON để tránh lỗi mã hóa.
+@gateway = http://localhost:8080
+
+### 1. Đăng ký host (accountType HOST)
+POST {{gateway}}/api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "host.a@example.com", "password": "Passw0rd!2026", "accountType": "HOST" }
+
+### 2. Đăng nhập host (lưu token)
+POST {{gateway}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "host.a@example.com", "password": "Passw0rd!2026" }
+
+> {% client.global.set("hostToken", response.body.accessToken); %}
+
+### 3. Tạo khách sạn (bản nháp)
+POST {{gateway}}/api/v1/host/properties
+Authorization: Bearer {{hostToken}}
+Content-Type: application/json
+
+{
+  "name": "Sunrise Da Nang Hotel",
+  "description": "Khach san gan bien",
+  "city": "Da Nang",
+  "country": "VN",
+  "address": "1 Vo Nguyen Giap",
+  "latitude": 16.0544,
+  "longitude": 108.2022,
+  "currency": "VND",
+  "amenities": ["WIFI", "POOL", "BREAKFAST"]
+}
+
+> {% client.global.set("propertyId", response.body.id); %}
+
+### 4. Thêm loại phòng
+POST {{gateway}}/api/v1/host/properties/{{propertyId}}/room-types
+Authorization: Bearer {{hostToken}}
+Content-Type: application/json
+
+{ "name": "Deluxe Twin", "maxGuests": 2, "bedConfig": "2 giuong don", "totalRooms": 10, "basePriceMinor": 1200000 }
+
+### 5. Đăng khách sạn (phát PropertyPublished)
+POST {{gateway}}/api/v1/host/properties/{{propertyId}}/publish
+Authorization: Bearer {{hostToken}}
+
+### 6. Khách xem (không cần token)
+GET {{gateway}}/api/v1/properties/{{propertyId}}
+
+### 7. Danh mục tiện nghi (công khai)
+GET {{gateway}}/api/v1/properties/amenities
+
+### 8. Danh sách khách sạn của tôi (phân trang bằng cursor: ?limit=20&after=<nextCursor>)
+GET {{gateway}}/api/v1/host/properties?limit=20
+Authorization: Bearer {{hostToken}}
+
+### 9. Sửa khách sạn (khách sạn đang đăng thì phát PropertyUpdated)
+PUT {{gateway}}/api/v1/host/properties/{{propertyId}}
+Authorization: Bearer {{hostToken}}
+Content-Type: application/json
+
+{
+  "name": "Sunrise Da Nang Hotel & Spa",
+  "description": "Da doi ten",
+  "city": "Da Nang",
+  "country": "VN",
+  "address": "1 Vo Nguyen Giap",
+  "latitude": 16.0544,
+  "longitude": 108.2022,
+  "currency": "VND",
+  "amenities": ["WIFI", "POOL", "SPA"]
+}
+
+### 10. Gỡ đăng (phát PropertyUnpublished)
+POST {{gateway}}/api/v1/host/properties/{{propertyId}}/unpublish
+Authorization: Bearer {{hostToken}}
+
+### 11. Host KHÁC sửa khách sạn này: phải bị 403 (đăng ký, đăng nhập host.b rồi đặt biến otherToken)
+PUT {{gateway}}/api/v1/host/properties/{{propertyId}}
+Authorization: Bearer {{otherToken}}
+Content-Type: application/json
+
+{ "name": "Chiem quyen", "city": "Da Nang", "country": "VN", "latitude": 16.05, "longitude": 108.2, "currency": "VND" }
+
+### 12. Admin khóa khách sạn (cần tài khoản có vai trò ADMIN, xem docs/phase1-demo.md)
+POST {{gateway}}/api/v1/admin/properties/{{propertyId}}/suspend
+Authorization: Bearer {{adminToken}}

@@ -1,1 +1,3 @@
 com.bookingplatform.common.web.CommonWebAutoConfiguration
+com.bookingplatform.common.outbox.OutboxAutoConfiguration
+

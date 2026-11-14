@@ -1,14 +1,13 @@
-package com.bookingplatform.auth.infrastructure.messaging;
+package com.bookingplatform.common.outbox;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -26,11 +25,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * - Đảm bảo "ít nhất một lần": consumer phải chống trùng bằng eventId.
  */
 @Component
-@ConditionalOnProperty(name = "app.outbox.enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPublisher {
-
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
-
     private static final String SELECT_SQL = """
             SELECT id, topic, aggregate_id, payload::text AS payload
             FROM outbox
@@ -39,16 +35,13 @@ public class OutboxPublisher {
             LIMIT ?
             FOR UPDATE SKIP LOCKED
             """;
-
     private final JdbcTemplate jdbc;
     private final KafkaTemplate<String, String> kafka;
     private final TransactionTemplate transaction;
     private final int batchSize;
 
-    public OutboxPublisher(JdbcTemplate jdbc,
-            KafkaTemplate<String, String> kafka,
-            TransactionTemplate transaction,
-            @Value("${app.outbox.batch-size:50}") int batchSize) {
+    public OutboxPublisher(JdbcTemplate jdbc, KafkaTemplate<String, String> kafka,
+            TransactionTemplate transaction, int batchSize) {
         this.jdbc = jdbc;
         this.kafka = kafka;
         this.transaction = transaction;
@@ -59,8 +52,8 @@ public class OutboxPublisher {
     public void publishPending() {
         try {
             transaction.executeWithoutResult(status -> publishBatch());
-        } catch (RuntimeException e) {
-            log.warn("Outbox: Failed to publish message, will retry on next attempt: {}", e.toString());
+        } catch (Exception e) {
+            log.warn("Outbox: error sending, will try again next time: {}", e.toString());
         }
     }
 
@@ -72,7 +65,6 @@ public class OutboxPublisher {
                         rs.getObject("aggregate_id", UUID.class),
                         rs.getString("payload")),
                 batchSize);
-
         for (Row row : rows) {
             try {
                 kafka.send(row.topic(), row.aggregateId().toString(), row.payload()).get(10, TimeUnit.SECONDS);
@@ -80,7 +72,7 @@ public class OutboxPublisher {
                 Thread.currentThread().interrupt();
                 return;
             } catch (ExecutionException | TimeoutException e) {
-                log.warn("Outbox: Failed to send event {} to topic {}: {}", row.id(), row.topic(), e.toString());
+                log.warn("Outbox: không gửi được sự kiện {} lên topic {}: {}", row.id(), row.topic(), e.toString());
                 return;
             }
             jdbc.update("UPDATE outbox SET published_at = now() WHERE id = ?", row.id());

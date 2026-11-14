@@ -7,7 +7,7 @@ import com.bookingplatform.auth.domain.model.Credential;
 import com.bookingplatform.auth.domain.model.Emails;
 import com.bookingplatform.auth.domain.model.Role;
 import com.bookingplatform.auth.domain.port.CredentialRepository;
-import com.bookingplatform.auth.domain.port.OutboxWriter;
+import com.bookingplatform.common.outbox.OutboxWriter;
 import com.bookingplatform.common.web.CorrelationIdFilter;
 import com.bookingplatform.events.EventEnvelope;
 import com.bookingplatform.events.EventTypes;

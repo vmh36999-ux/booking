@@ -86,8 +86,9 @@ app:
       max-per-ip: 20
       window: 15m
 
-  # MỚI: Cấu hình Transactional Outbox
   outbox:
-    enabled: true
+    enabled: true            # công tắc của outbox dùng chung (common-lib)
     poll-interval-ms: 400
     batch-size: 50
+    publisher:
+      enabled: true          # false = chỉ ghi outbox, không gửi lên Kafka
