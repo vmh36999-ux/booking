@@ -35,8 +35,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * riêng: OutboxPublisherIntegrationTest.
  * Cần Docker đang chạy.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = { "app.outbox.enabled=false",
-                "app.auth.login-limit.max-per-ip=1000" })
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+                "app.outbox.enabled=true",
+                "app.outbox.publisher.enabled=false",
+                "app.auth.login-limit.max-per-ip=1000"
+})
 @Testcontainers
 class AuthApiIntegrationTest {
 
