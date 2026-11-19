@@ -40,7 +40,7 @@ spring:
             - id: inventory
               uri: ${INVENTORY_URL:http://localhost:8086}
               predicates:
-                - Path=/api/v1/inventory/**,/api/v1/host/inventory/**
+                - Path=/api/v1/host/inventory/**
             - id: pricing
               uri: ${PRICING_URL:http://localhost:8087}
               predicates:

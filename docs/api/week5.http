@@ -1,0 +1,66 @@
+### Tuần 5: request mẫu cho inventory-service (gọi TRỰC TIẾP cổng 8086, không qua gateway)
+### Cần token có vai trò ADMIN hoặc SERVICE. Cấp ADMIN bằng SQL (xem hướng dẫn tuần 5), rồi đăng nhập để lấy token.
+@auth = http://localhost:8081
+@inventory = http://localhost:8086
+@roomTypeId = 00000000-0000-0000-0000-000000000001
+
+### 1. Đăng nhập admin (lưu token)
+POST {{auth}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "admin.inv@example.com", "password": "Passw0rd!2026" }
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### 2. Giữ chỗ: 2 phòng, 3 đêm (đổi ngày cho đúng tương lai). bookingId bất kỳ nhưng mỗi đơn một giá trị khác nhau.
+POST {{inventory}}/api/v1/inventory/holds
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "bookingId": "11111111-1111-1111-1111-111111111111",
+  "roomTypeId": "{{roomTypeId}}",
+  "checkIn": "2026-12-20",
+  "checkOut": "2026-12-23",
+  "qty": 2
+}
+
+> {% client.global.set("holdId", response.body.id); %}
+
+### 3. Gọi lại cùng bookingId: trả 200 và đúng lần giữ cũ (không giữ thêm)
+POST {{inventory}}/api/v1/inventory/holds
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "bookingId": "11111111-1111-1111-1111-111111111111",
+  "roomTypeId": "{{roomTypeId}}",
+  "checkIn": "2026-12-20",
+  "checkOut": "2026-12-23",
+  "qty": 2
+}
+
+### 4. Xem lần giữ chỗ
+GET {{inventory}}/api/v1/inventory/holds/{{holdId}}
+Authorization: Bearer {{adminToken}}
+
+### 5. Xác nhận (idempotent: gọi hai lần cho cùng kết quả)
+POST {{inventory}}/api/v1/inventory/holds/{{holdId}}/confirm
+Authorization: Bearer {{adminToken}}
+
+### 6. Nhả (chỉ nhả được hold chưa xác nhận; hold đã xác nhận trả 409 HOLD_ALREADY_CONFIRMED)
+POST {{inventory}}/api/v1/inventory/holds/{{holdId}}/release
+Authorization: Bearer {{adminToken}}
+
+### 7. Giữ vượt số phòng: trả 409 SOLD_OUT
+POST {{inventory}}/api/v1/inventory/holds
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "bookingId": "22222222-2222-2222-2222-222222222222",
+  "roomTypeId": "{{roomTypeId}}",
+  "checkIn": "2026-12-20",
+  "checkOut": "2026-12-23",
+  "qty": 20
+}
