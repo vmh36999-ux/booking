@@ -9,8 +9,8 @@ spring:
     timeout-per-shutdown-phase: 20s
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/inventory_db
-    username: ${DB_USER:platform}
-    password: ${DB_PASSWORD:platform}
+    username: platform
+    password: platform
     hikari:
       maximum-pool-size: 10
   jpa:
@@ -56,3 +56,8 @@ management:
 app:
   security:
     permit-all: false
+  
+  inventory:
+    hold-ttl: 15m            # giữ chỗ bao lâu thì hết hạn nếu chưa xác nhận
+    horizon-days: 365        # tạo tồn kho cho bao nhiêu ngày tới khi có loại phòng mới
+    max-nights: 30           # một lần giữ chỗ tối đa bao nhiêu đêm
