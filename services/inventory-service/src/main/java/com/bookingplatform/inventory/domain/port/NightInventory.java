@@ -2,7 +2,12 @@
 package com.bookingplatform.inventory.domain.port;
 
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+
+import com.bookingplatform.inventory.domain.model.NightSummary;
 
 /**
  * Tồn kho theo đêm. Mỗi hàm trả về SỐ ĐÊM (số dòng) bị thay đổi để nơi gọi kiểm
@@ -30,4 +35,20 @@ public interface NightInventory {
      * đè).
      */
     void createNights(UUID roomTypeId, LocalDate from, int days, int totalRooms);
+
+    /**
+     * Tóm tắt nhiều loại phòng một lượt (chỉ đọc, không khóa). Loại phòng chưa có
+     * đêm nào thì không có trong kết quả.
+     */
+    Map<UUID, NightSummary> summarize(Collection<UUID> roomTypeIds, LocalDate checkIn, LocalDate checkOut);
+
+    /**
+     * Đặt tổng số phòng cho các đêm trong [from, to). Chỉ đêm nào số giữ + số đặt
+     * KHÔNG vượt mức mới mới được đổi.
+     * Trả về số đêm đã đổi.
+     */
+    int setTotal(UUID roomTypeId, LocalDate from, LocalDate to, int totalRooms);
+
+    /** Các đêm (tối đa 10) mà số giữ + số đặt đang vượt mức totalRooms. */
+    List<LocalDate> findNightsAboveTotal(UUID roomTypeId, LocalDate from, LocalDate to, int totalRooms);
 }

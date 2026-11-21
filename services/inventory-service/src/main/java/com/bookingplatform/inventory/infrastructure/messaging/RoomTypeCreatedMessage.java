@@ -21,6 +21,6 @@ public record RoomTypeCreatedMessage(
         Data data) {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Data(UUID propertyId, UUID roomTypeId, String name, int maxGuests, int totalRooms) {
+    public record Data(UUID propertyId, UUID hostId, UUID roomTypeId, String name, int maxGuests, int totalRooms) {
     }
 }

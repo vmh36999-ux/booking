@@ -38,7 +38,8 @@ public class RoomTypeCreatedListener {
             return;
         }
         boolean processed = initializeInventory.handle(
-                message.eventId(), message.data().roomTypeId(), message.data().totalRooms());
+                message.eventId(), message.data().roomTypeId(), message.data().totalRooms(),
+                message.data().propertyId(), message.data().hostId());
         if (!processed) {
             log.info("Skipping already processed event: {}", message.eventId());
         }

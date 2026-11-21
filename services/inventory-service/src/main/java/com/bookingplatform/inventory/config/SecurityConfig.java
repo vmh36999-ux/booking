@@ -1,9 +1,7 @@
 package com.bookingplatform.inventory.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -12,11 +10,13 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * API giữ chỗ là API NỘI BỘ: chỉ booking-service (tuần 10) gọi, người dùng
- * thường không được gọi.
- * Vì vậy cần vai trò SERVICE hoặc ADMIN. Gateway cũng KHÔNG mở đường
- * /api/v1/inventory/** ra ngoài.
- * (Tuần 10 sẽ cấp token vai trò SERVICE cho booking-service.)
+ * - /api/v1/inventory/** : API NỘI BỘ (giữ chỗ, tìm phòng trống hàng loạt). Cần
+ * vai trò SERVICE hoặc ADMIN.
+ * Gateway không mở đường này ra ngoài. Booking-service và search-service gọi
+ * thẳng trong mạng nội bộ.
+ * - /api/v1/host/** : API của HOST (chỉnh số phòng). Cần vai trò HOST; quyền sở
+ * hữu loại phòng
+ * được kiểm tra thêm trong use case.
  */
 @Configuration
 @EnableWebSecurity
@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info", "/actuator/prometheus", "/error")
                         .permitAll()
                         .requestMatchers("/api/v1/inventory/**").hasAnyRole("SERVICE", "ADMIN")
+                        .requestMatchers("/api/v1/host/**").hasRole("HOST")
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(rolesConverter())));
         return http.build();

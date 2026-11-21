@@ -3,6 +3,7 @@ package com.bookingplatform.inventory.domain.port;
 import com.bookingplatform.inventory.domain.model.Hold;
 import com.bookingplatform.inventory.domain.model.HoldStatus;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +26,10 @@ public interface HoldRepository {
      * chỉ một bên thắng.
      */
     int transition(UUID id, HoldStatus from, HoldStatus to, Instant now);
+
+    /**
+     * Các hold còn HELD mà đã quá hạn (expires_at <= now), cũ nhất trước, tối đa
+     * "limit" dòng.
+     */
+    List<Hold> findDueForExpiry(Instant now, int limit);
 }

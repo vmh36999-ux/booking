@@ -14,6 +14,11 @@
   <artifactId>inventory-service</artifactId>
   <name>inventory-service</name>
 
+  <properties>
+    <!-- ShedLock 7.x dành cho Spring Framework 7 (Spring Boot 4). Dùng bản 7.x mới nhất, đã ra ít nhất 2 tuần. -->
+    <shedlock.version>7.6.0</shedlock.version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.bookingplatform</groupId>
@@ -74,6 +79,18 @@
       <scope>runtime</scope>
     </dependency>
 
+    <!-- ShedLock: chỉ MỘT instance chạy job định kỳ tại một thời điểm (khóa nằm trong bảng shedlock của PostgreSQL) -->
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-spring</artifactId>
+      <version>${shedlock.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>net.javacrumbs.shedlock</groupId>
+      <artifactId>shedlock-provider-jdbc-template</artifactId>
+      <version>${shedlock.version}</version>
+    </dependency>
+
     <!-- Test -->
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -124,6 +141,17 @@
       <plugin>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-maven-plugin</artifactId>
+      </plugin>
+      <!-- Khi chạy test bằng Maven: tắt job hết hạn để nó không chen vào giữa các test.
+           Test của job tự bật lại bằng thuộc tính riêng (thuộc tính của test có ưu tiên cao hơn). -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <configuration>
+          <systemPropertyVariables>
+            <app.inventory.expiry.enabled>false</app.inventory.expiry.enabled>
+          </systemPropertyVariables>
+        </configuration>
       </plugin>
     </plugins>
   </build>
