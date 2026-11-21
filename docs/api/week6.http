@@ -1,0 +1,59 @@
+### Tuần 6: request mẫu cho inventory-service
+### Tìm phòng trống (nội bộ): gọi TRỰC TIẾP cổng 8086 với token ADMIN hoặc SERVICE.
+### Chỉnh số phòng (host): gọi qua gateway cổng 8080 với token HOST.
+@auth = http://localhost:8081
+@inventory = http://localhost:8086
+@gateway = http://localhost:8080
+@roomTypeId = 00000000-0000-0000-0000-000000000001
+
+### 1. Đăng nhập admin (lưu token)
+POST {{auth}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "admin.inv@example.com", "password": "Passw0rd!2026" }
+
+> {% client.global.set("adminToken", response.body.accessToken); %}
+
+### 2. Tìm phòng trống hàng loạt: 2 loại phòng, 3 đêm, cần 2 phòng
+POST {{inventory}}/api/v1/inventory/availability/search
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{
+  "roomTypeIds": ["{{roomTypeId}}", "00000000-0000-0000-0000-000000000002"],
+  "checkIn": "2026-12-20",
+  "checkOut": "2026-12-23",
+  "qty": 2
+}
+
+### 3. Đăng nhập host (chủ của loại phòng)
+POST {{auth}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "host.inv@example.com", "password": "Passw0rd!2026" }
+
+> {% client.global.set("hostToken", response.body.accessToken); %}
+
+### 4. Host chỉnh tổng số phòng từ 20/12 đến hết 26/12 (to = 27/12 không tính)
+PUT {{gateway}}/api/v1/host/inventory
+Authorization: Bearer {{hostToken}}
+Content-Type: application/json
+
+{
+  "roomTypeId": "{{roomTypeId}}",
+  "from": "2026-12-20",
+  "to": "2026-12-27",
+  "totalRooms": 8
+}
+
+### 5. Giảm xuống dưới số đã giữ và đặt: trả 409 BELOW_COMMITTED kèm các đêm bị vướng
+PUT {{gateway}}/api/v1/host/inventory
+Authorization: Bearer {{hostToken}}
+Content-Type: application/json
+
+{
+  "roomTypeId": "{{roomTypeId}}",
+  "from": "2026-12-20",
+  "to": "2026-12-27",
+  "totalRooms": 0
+}

@@ -77,6 +77,16 @@ public class JdbcHoldRepository implements HoldRepository {
                 to.name(), ts(now), id, from.name());
     }
 
+    /**
+     * Dùng chỉ mục một phần idx_room_hold_active_expiry (chỉ các dòng HELD) nên
+     * nhanh dù bảng có rất nhiều hold cũ.
+     */
+    @Override
+    public List<Hold> findDueForExpiry(Instant now, int limit) {
+        return jdbc.query(SELECT + " WHERE status = 'HELD' AND expires_at <= ? ORDER BY expires_at LIMIT ?",
+                MAPPER, ts(now), limit);
+    }
+
     private Optional<Hold> one(String sql, Object arg) {
         List<Hold> rows = jdbc.query(sql, MAPPER, arg);
         return rows.stream().findFirst();

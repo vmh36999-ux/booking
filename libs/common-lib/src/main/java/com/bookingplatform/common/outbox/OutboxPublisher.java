@@ -14,6 +14,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 /**
  * Định kỳ lấy các dòng outbox chưa gửi, gửi lên Kafka, rồi đánh dấu đã gửi.
@@ -26,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
  * - Đảm bảo "ít nhất một lần": consumer phải chống trùng bằng eventId.
  */
 @Component
+@ConditionalOnProperty(prefix = "app.outbox.publisher", name = "enabled", havingValue = "true", matchIfMissing = true)
 public class OutboxPublisher {
     private static final Logger log = LoggerFactory.getLogger(OutboxPublisher.class);
     private static final String SELECT_SQL = """

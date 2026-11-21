@@ -51,7 +51,8 @@ public class PropertyEvents {
 
     public void roomTypeCreated(Property property, RoomType roomType) {
         write(EventTypes.ROOM_TYPE_CREATED, property,
-                new RoomTypeCreated(property.getId(), roomType.getId(), roomType.getName(), roomType.getMaxGuests(),
+                new RoomTypeCreated(property.getId(), property.getHostId(), roomType.getId(), roomType.getName(),
+                        roomType.getMaxGuests(),
                         roomType.getBedConfig(), roomType.getTotalRooms(), roomType.getBasePriceMinor(),
                         property.getCurrency()));
     }

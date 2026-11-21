@@ -20,7 +20,12 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
  * exit-when-done=false để tiến trình test không bị tắt; emit-events=true để
  * kiểm tra cả sự kiện.
  */
-@SpringBootTest(properties = { "app.seed.count=60", "app.seed.exit-when-done=false", "app.seed.emit-events=true" })
+@SpringBootTest(properties = {
+        "app.seed.count=60",
+        "app.seed.exit-when-done=false",
+        "app.seed.emit-events=true",
+        "app.outbox.publisher.enabled=false"
+})
 @ActiveProfiles("seed")
 @Testcontainers
 class SeedRunnerIntegrationTest {

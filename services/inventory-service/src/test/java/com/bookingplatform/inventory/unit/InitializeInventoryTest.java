@@ -12,6 +12,8 @@ import com.bookingplatform.inventory.application.usecase.InitializeInventory;
 import com.bookingplatform.inventory.config.InventoryProperties;
 import com.bookingplatform.inventory.domain.port.NightInventory;
 import com.bookingplatform.inventory.domain.port.ProcessedEventRepository;
+import com.bookingplatform.inventory.domain.port.RoomTypeOwners;
+
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -30,9 +32,13 @@ class InitializeInventoryTest {
     private final ProcessedEventRepository processedEvents = mock(ProcessedEventRepository.class);
     private final NightInventory nights = mock(NightInventory.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-11-23T03:00:00Z"), ZoneOffset.UTC);
+    private final RoomTypeOwners owners = mock(RoomTypeOwners.class);
     private final InitializeInventory service = new InitializeInventory(
-            processedEvents, nights, new InventoryProperties(Duration.ofMinutes(15), 365, 30), clock);
-
+            processedEvents,
+            nights,
+            owners,
+            new InventoryProperties(Duration.ofMinutes(15), 365, 30),
+            clock);
     private final UUID eventId = UUID.randomUUID();
     private final UUID roomType = UUID.randomUUID();
 

@@ -61,3 +61,8 @@ app:
     hold-ttl: 15m            # giữ chỗ bao lâu thì hết hạn nếu chưa xác nhận
     horizon-days: 365        # tạo tồn kho cho bao nhiêu ngày tới khi có loại phòng mới
     max-nights: 30           # một lần giữ chỗ tối đa bao nhiêu đêm
+    expiry:
+      enabled: true          # false = tắt job quét hold hết hạn
+      interval: PT1M         # job chạy sau mỗi 1 phút (chuẩn ISO-8601: PT1M, PT30S...)
+      lock-at-least-for: PT20S   # giữ khóa ShedLock tối thiểu 20 giây: hai instance không chạy chồng nhau
+      batch-size: 100        # mỗi lượt xử lý tối đa 100 hold
