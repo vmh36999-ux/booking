@@ -32,7 +32,7 @@ class RoomTypeOwnerKafkaIntegrationTest {
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16");
 
     @Container
-    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.0");
+    static final KafkaContainer KAFKA = new KafkaContainer("apache/kafka:3.9.1");
 
     @DynamicPropertySource
     static void containers(DynamicPropertyRegistry registry) {
